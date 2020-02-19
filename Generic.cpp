@@ -139,9 +139,17 @@ HDCallbackCode HDCALLBACK FrictionlessPlaneCallback(void *pUserData)
 	//*** START EDITING HERE ***//////////////////////////////////////////////////
 	//////////////////////////////////////////////////////////////////////////////
 
-    //We use the same stiffness k for all examples below.  In the lab, we will have different cpps for each example, so we will have to redefine it in each.
-    //Note that k will be wrt the internal distance units / force units.
-    HDdouble k = 10000;
+ 	// you don't have to use the following variables, but they may be useful
+	hduVector3Dd normal(0,0,0);
+	hduVector3Dd f(0,0,0);
+	double  dist = 0;
+
+	//*** START EDITING HERE ***//////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+
+	//We use the same stiffness k for all examples below.  In the lab, we will have different cpps for each example, so we will have to redefine it in each.
+    //Note that k measured in N/mm.
+    HDdouble k = 0.20;
 
     //////////////////////////////GENERIC PLANE/////////////////////////////////////////////////
     /* Implement the algorithm covered in class
@@ -150,7 +158,7 @@ HDCallbackCode HDCALLBACK FrictionlessPlaneCallback(void *pUserData)
 
     //Note that in the future, this could be better done by having a plane struct with normal and point vector members.
     hduVector3Dd planeNormal(0, 1, 0);
-    hduVector3Dd planePoint(0, 1, 2);
+    hduVector3Dd planePoint(0, 10, 2);
 
     //Make sure that planeNormal is a unit vector.
     planeNormal.normalize();
@@ -162,17 +170,26 @@ HDCallbackCode HDCALLBACK FrictionlessPlaneCallback(void *pUserData)
     HDdouble d = dotProduct(r, planeNormal);
 
     //We initalize our force output var.
-    hduVector3Dd f(0, 0, 0);
+    f.set(0, 0, 0);
 
     //If d is negative, the user is on or in the wall.  If d is positive, the user is outside of the wall.
     if (d <= 0) {
-        f = k * d * planeNormal;
+		std::cout << "Collision detected\n";
+        f = -1 * k * d * planeNormal;
     }
 
     // command the desired force "f". You must determine the value of "f" before using this line.
 	hdSetDoublev(HD_CURRENT_FORCE, f);
 
     //Displaying force prob important.  Use  [ ].
+
+
+	//std::cout<< position[0] << " " << position[1] << " " << position[2] << std::endl;
+
+	// command the desired force "f". You must determine the value of "f" before using this line.
+	
+
+	hdSetDoublev(HD_CURRENT_FORCE, f);
 
     ////////////////////////////////////////////////////////////5 Sided box.////////////////////////
     
@@ -262,7 +279,21 @@ HDCallbackCode HDCALLBACK FrictionlessPlaneCallback(void *pUserData)
 
     //Then just implement as per slide 27...  R is arbitraily defined and F(r) should be continuous.  Find k2 algorithmically based on r.
     //Note: can use .magnitude().
+	
+	//R defined in mm abritrarily.
+	R = 20;
     
+	//We split the forces at R into a gravitational case and a spring case.
+	if (d.magnitude() > R){
+		f = -1*k/pow(d.magnituide, 2)*d.normalize();		
+	}
+	
+	if (d.magnitude() <= R){
+		//We set k2 to be equal to k/R^3 so that the force feedback is continuous.
+		//If wanted to optimize could make this a const outside of recurring loop so its not repeatedly calced.
+		k2 = k/pow(R,3);
+		f = -1*k2*d;	//Note that d.magnitude()*d.normalize == d.
+	}
     
 
 
