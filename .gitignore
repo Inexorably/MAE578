@@ -1,3 +1,6 @@
 
 *.log
 *.tlog
+*.opendb
+*.db
+*.db

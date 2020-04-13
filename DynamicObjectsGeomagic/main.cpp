@@ -309,6 +309,16 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void *data)
   
   //Check if the HIP has collided with the dynamic sphere.
   const hduVector3Dd rSphereHIP = sphere_pos - position;
+  //If the distance vector has less magnitude than sum of radii, then we have collision.
+  const double deltaDist = rSphereHIP.magnitude() - sphere_radius - proxy_radius;
+  if (deltaDist < 0) {
+      //Calculate force onto dynamic sphere based on its k value.  Apply this force to both the user and the sphere.
+      //The force is in the opposite direction to rSphereHIP (the vector between the centers of the two spheres).  This vector points from the proxy to the dynamic sphere.
+      hduVector3Dd collisionForce = rSphereHIP.normalize() * deltaDist * sphere_k;
+      
+      f = f - collisionForce;
+      sphere_f = sphere_f + collisionForce;
+  }
 
 
 
