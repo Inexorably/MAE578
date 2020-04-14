@@ -173,8 +173,8 @@ void displayFunction(void)
 
     // Update the "proxy_object" variable such that the big sphere does not appear to pass the walls visually.
     // when the big sphere is not touching the walls, proxy_object is the same as sphere_pos
-
-
+    
+    ////////////////////We do rigid walls so this is not a problem.
 
 
     // Draw the big sphere using the drawSphere fucntion using the sphere center and parameters defined above
@@ -194,10 +194,26 @@ void displayFunction(void)
     // when the HIP sphere is not touching any objects, proxy_pos is the same as current user's position
 
     // Consider if HIP sphere enters the walls. Find the proxy_pos
+    for (int i = 0; i < 3; ++i) {
+        if (proxy_pos[0] + proxy_radius > side_length / 2) {
+            proxy_pos[0] = side_length / 2 - proxy_radius;
+        }
+        else if (proxy_pos[0] - proxy_radius < -side_length / 2) {
+            proxy_pos[0] = -side_length / 2 + proxy_radius;
+        }
+    }
 
 
     // Consider if HIP sphere enters the big sphere. Find the proxy_pos. Current big sphere position is the global variable sphere_pos. 
-
+    hduVector3Dd rSphereHIP = sphere_pos - position;
+    //If the distance vector has less magnitude than sum of radii, then we have collision.
+    const double deltaDist = rSphereHIP.magnitude() - sphere_radius - proxy_radius;
+    if (deltaDist < 0) {
+        //Calculate force onto dynamic sphere based on its k value.  Apply this force to both the user and the sphere.
+        //The force is in the opposite direction to rSphereHIP (the vector between the centers of the two spheres).  This vector points from the proxy to the dynamic sphere.
+        rSphereHIP.normalize();
+        proxy_pos = sphere_pos - rSphereHIP * (sphere_radius + proxy_radius);
+    }
 
 
     // Draw HIP sphere using the updated "proxy_pos" variable
