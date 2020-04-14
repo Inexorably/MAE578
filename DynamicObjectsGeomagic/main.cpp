@@ -53,7 +53,7 @@ const double side_length = 200; // Length of the sides of the box (mm)
 const hduVector3Dd side_lengths(side_length, side_length, side_length);
 const float box_color[4] = { .2, .2, .8, .2 };
 
-// Object (big sphere) Parameters
+// Object (big sphere) Parameters.  Note that for remote testing purposes, object may spawn on hip to provide force / have intial velocity / force components.
 const double sphere_k = 0.48;  // Surface stiffness with HIP (N/mm)
 const double sphere_damping = 0.002; // Sphere damping (N-s/mm)
 const double sphere_mass = 0.005; // Sphere mass (Kg)
@@ -63,7 +63,7 @@ const float sphere_color[4] = { .2, .8, .8, .8 };
 // State parameters 
 //Note that HIP tool is at 0, -65, -88).
 hduVector3Dd sphere_pos(0, -60, -88); // center of the object sphere
-hduVector3Dd sphere_vel(0, 0, 0);
+hduVector3Dd sphere_vel(-20, 0, 0);
 hduVector3Dd sphere_acc(0, 0, 0); //velocity and acceleration of the big sphere
 
 //Calculate wall interactions based on radius and position.  Return force vector.  For cube (if want different side lengths take side_lengths as arg).
@@ -320,7 +320,8 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     //The simulation is contained within a box, surrounding (0, 0, 0) with lengths side_length.
     //We model these walls simple spring system.
 
-    //Check for wall collision.
+    //Check for wall collision.  We use a penetration method for both the hip and dynamic sphere, though in a previous version we used a perfect reflection method
+	//for the dynamic sphere.  Both function approximately the same.
     f = f + Interaction_Wall(position, proxy_radius, wall_hip_k, side_length);
 	sphere_f = sphere_f + Interaction_Wall(sphere_pos, sphere_radius, wall_sphere_k, side_length); 
 
@@ -364,12 +365,17 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     //Integrate for position.
     sphere_pos = sphere_pos + sphere_vel * dt;
 
-	//Print some info for debugging.
-	if (ticker == 300){
+	//Print some info for debugging.  Printing every step will slow the simulation, so print every 300ms.
+	if (ticker == 300 && false){
 		ticker = 0;
-		std::cout << "dynamic sphere:\n";
+		std::cout << "-------\ndynamic sphere:\n";
 		for (int i = 0; i < 3; ++i){
 			std::cout << i << " - f: " << sphere_f[i] << ", a: " << sphere_acc[i] << ", v: " << sphere_vel[i] << ", p: " << sphere_pos[i] << '\n';
+		}
+		std::cout << "||v||: " << sphere_vel.magnitude() << "\n\n";
+		std::cout << "hip sphere:\n";
+		for (int i = 0; i < 3; ++i){
+			std::cout << i << " - f: " << f[i] << ", p: " << position[i] << '\n';
 		}
 	}
 
