@@ -61,8 +61,9 @@ const double sphere_radius = 10.0; // Radius of sphere (mm)
 const float sphere_color[4] = { .2, .8, .8, .8 };
 
 // State parameters 
-hduVector3Dd sphere_pos(0, 0, -88); // center of the object sphere
-hduVector3Dd sphere_vel(0, -20, 0);
+//Note that HIP tool is at 0, -65, -88).
+hduVector3Dd sphere_pos(0, -60, -88); // center of the object sphere
+hduVector3Dd sphere_vel(0, 0, 0);
 hduVector3Dd sphere_acc(0, 0, 0); //velocity and acceleration of the big sphere
 
 //Calculate wall interactions based on radius and position.  Return force vector.  For cube (if want different side lengths take side_lengths as arg).
@@ -192,7 +193,7 @@ void displayFunction(void)
     // Update the "proxy_pos" variable such that the user's HIP sphere does not penetrate into other surfaces graphically
     // when the HIP sphere is not touching any objects, proxy_pos is the same as current user's position
 
-    // Consider if HIP sphere enters the walls. Find the proxy_pos
+    // Consider if HIP sphere enters the walls. Find the proxy_pos.
     for (int i = 0; i < 3; ++i) {
         if (proxy_pos[i] + proxy_radius > side_length / 2) {
             proxy_pos[i] = side_length / 2 - proxy_radius;
@@ -336,8 +337,8 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
         rSphereHIP.normalize();
         hduVector3Dd collisionForce = rSphereHIP * deltaDist * sphere_k;
 
-        f = f - collisionForce;
-        sphere_f = sphere_f + collisionForce;
+        f = f + collisionForce;
+        sphere_f = sphere_f - collisionForce;
     }
 
 	//std::cout << position[0] << ", " << position[1] << ", " << position[2] << "\n";
@@ -363,9 +364,13 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     //Integrate for position.
     sphere_pos = sphere_pos + sphere_vel * dt;
 
-	if (ticker == 800 && false){
+	//Print some info for debugging.
+	if (ticker == 300){
 		ticker = 0;
-		std::cout << "fx: " << sphere_f[0] << ", ax: " << sphere_acc[0] << ", vx: " << sphere_vel[0] << ", px: " << sphere_pos[0] << '\n';
+		std::cout << "dynamic sphere:\n";
+		for (int i = 0; i < 3; ++i){
+			std::cout << i << " - f: " << sphere_f[i] << ", a: " << sphere_acc[i] << ", v: " << sphere_vel[i] << ", p: " << sphere_pos[i] << '\n';
+		}
 	}
 
 
