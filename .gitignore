@@ -4,3 +4,6 @@
 *.opendb
 *.db
 *.db
+DynamicObjectsGeomagic/.vs/DynamicObjects_VS2010/v16/.suo
+*.db
+*.db
