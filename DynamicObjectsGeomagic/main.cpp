@@ -49,7 +49,7 @@ const float proxy_color[4] = { .8, .2, .2, .8 };
 // Box surface Parameters
 const double wall_hip_k = 0.48;  // Surface stiffness with HIP (N/mm)
 const double wall_sphere_k = 4.00;  // Surface stiffness with sphere (N/mm)
-const double side_length = 130; // Length of the sides of the box (mm)
+const double side_length = 200; // Length of the sides of the box (mm)
 const hduVector3Dd side_lengths(side_length, side_length, side_length);
 const float box_color[4] = { .2, .2, .8, .2 };
 
@@ -61,8 +61,9 @@ const double sphere_radius = 10.0; // Radius of sphere (mm)
 const float sphere_color[4] = { .2, .8, .8, .8 };
 
 // State parameters 
-hduVector3Dd sphere_pos(0, 0, 0); // center of the object sphere
-hduVector3Dd sphere_vel(0, 0, 0), sphere_acc(0, 0, 0); //velocity and acceleration of the big sphere
+hduVector3Dd sphere_pos(0, -50, -88.1142); // center of the object sphere
+hduVector3Dd sphere_vel(0, -1, 0);
+hduVector3Dd sphere_acc(0, 0, 0); //velocity and acceleration of the big sphere
 
 //Calculate wall interactions based on radius and position.  Return force vector.  For cube (if want different side lengths take side_lengths as arg).
 hduVector3Dd Interaction_Wall(const hduVector3Dd& position, const double& radius, const double& k, const double& side_length) {
@@ -173,7 +174,7 @@ void displayFunction(void)
 
     // Update the "proxy_object" variable such that the big sphere does not appear to pass the walls visually.
     // when the big sphere is not touching the walls, proxy_object is the same as sphere_pos
-    
+
     ////////////////////We do rigid walls so this is not a problem.
 
 
@@ -195,17 +196,17 @@ void displayFunction(void)
 
     // Consider if HIP sphere enters the walls. Find the proxy_pos
     for (int i = 0; i < 3; ++i) {
-        if (proxy_pos[0] + proxy_radius > side_length / 2) {
-            proxy_pos[0] = side_length / 2 - proxy_radius;
+        if (proxy_pos[i] + proxy_radius > side_length / 2) {
+            proxy_pos[i] = side_length / 2 - proxy_radius;
         }
-        else if (proxy_pos[0] - proxy_radius < -side_length / 2) {
-            proxy_pos[0] = -side_length / 2 + proxy_radius;
+        else if (proxy_pos[i] - proxy_radius < -side_length / 2) {
+            proxy_pos[i] = -side_length / 2 + proxy_radius;
         }
     }
 
 
     // Consider if HIP sphere enters the big sphere. Find the proxy_pos. Current big sphere position is the global variable sphere_pos. 
-    hduVector3Dd rSphereHIP = sphere_pos - position;
+    hduVector3Dd rSphereHIP = sphere_pos - state.position;
     //If the distance vector has less magnitude than sum of radii, then we have collision.
     const double deltaDist = rSphereHIP.magnitude() - sphere_radius - proxy_radius;
     if (deltaDist < 0) {
@@ -301,7 +302,9 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     // Local variables for you to use. Add more variables as needed.
     hduVector3Dd f(0, 0, 0); //force on the HIP sphere to be outputted to user
     double timeStep = 0.001; //update rate for numerical integration
-    static hduVector3Dd sphere_f(-0.001, 0, 0); //net force on the big sphere
+    //Define some force on the sphere for testing.
+    hduVector3Dd sphere_f(0, 0, 0); //net force on the big sphere
+
 
     //std::cout<< position[0] << std::endl; //can uncomment this and use the command to output values on the screen for debugging
 
@@ -320,17 +323,17 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     //Loop through each dimension.  If there sphere is touching a wall, we appropriately reflect the acc and vel components in that axis.
     //This is not using penetration method.  We use penetration method for HIP because we don't have infinite stiffness hardware, but we are not subject to that restriction for internal sims.
     for (int i = 0; i < 3; ++i) {
-        if (sphere_pos[0] + sphere_radius > side_length / 2) {
+        if (sphere_pos[i] + sphere_radius > side_length / 2) {
             //Make the acc and vel vectors point in the negative direction (reflect).
-            sphere_acc[0] = -1 * abs(sphere_acc[0]);
-            sphere_vel[0] = -1 * abs(sphere_vel[0]);
-            sphere_pos[0] = side_length / 2 - sphere_radius;
+            sphere_acc[i] = -1 * abs(sphere_acc[i]);
+            sphere_vel[i] = -1 * abs(sphere_vel[i]);
+            sphere_pos[i] = side_length / 2 - sphere_radius;
         }
-        else if (sphere_pos[0] - sphere_radius < -side_length / 2) {
+        else if (sphere_pos[i] - sphere_radius < -side_length / 2) {
             //Make the acc and vel vectors point in the negative direction (reflect).
-            sphere_acc[0] = abs(sphere_acc[0]);
-            sphere_vel[0] = abs(sphere_vel[0]);
-            sphere_pos[0] = -side_length / 2 + sphere_radius;
+            sphere_acc[i] = abs(sphere_acc[i]);
+            sphere_vel[i] = abs(sphere_vel[i]);
+            sphere_pos[i] = -side_length / 2 + sphere_radius;
         }
     }
 
@@ -361,6 +364,8 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
         sphere_f = sphere_f + collisionForce;
     }
 
+    //std::cout << position[0] << ", " << position[1] << ", " << position[2] << "\n";
+
 
 
 
@@ -381,7 +386,7 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     const double dt = 0.001;
 
     //Update accel.  Account for damping to prevent infinite movement.
-    sphere_acc = sphere_acc + sphere_f / sphere_mass - sphere_damping * sphere_vel;
+    sphere_acc = sphere_acc + sphere_f / sphere_mass; // - sphere_damping * sphere_vel;
 
     //Integrate for velocity.  Is += defined for hd vector?  Don't have libraries.  
     sphere_vel = sphere_vel + sphere_acc * dt;
