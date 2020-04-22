@@ -71,17 +71,26 @@ hduVector3Dd sphere_acc(0, 0, 0); //velocity and acceleration of the big sphere
 //Calculate wall interactions based on radius and position.  Return force vector.  For cube (if want different side lengths take side_lengths as arg).
 hduVector3Dd Interaction_Wall(const hduVector3Dd& position, const double& radius, const double& k, const double& side_length) {
     hduVector3Dd wallForce;
-	for (int i = 0; i < 3; ++i){
-		if (position[i] + radius > side_length / 2) {
-        wallForce[i] += k * (side_length / 2 - position[i] - radius);
-		}
-		if (position[i] - radius < -side_length / 2) {
-			wallForce[i] += k * (-side_length / 2 - position[i] + radius);
-		}
-	}
+    for (int i = 0; i < 3; ++i) {
+        if (position[i] + radius > side_length / 2) {
+            wallForce[i] += k * (side_length / 2 - position[i] - radius);
+        }
+        if (position[i] - radius < -side_length / 2) {
+            wallForce[i] += k * (-side_length / 2 - position[i] + radius);
+        }
+    }
     return wallForce;
 }
 
+//Toggle the sphere_color.  Called when larger sphere collides.  Toggles between color a and b.
+void SphereColorToggle() {
+    if (sphere_color == sphere_color_a) {
+        sphere_color = sphere_color_b;
+    }
+    else {  //...sphere_color == sphere_color_b
+        sphere_color = sphere_color_a;
+    }
+}
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -166,9 +175,9 @@ void displayFunction(void)
 
     // Update the "proxy_object" variable such that the big sphere does not appear to pass the walls visually.
     // when the big sphere is not touching the walls, proxy_object is the same as sphere_pos
-    
-	//We could combine these for loops with the ones for the hip proxy, but I am seperating them for consistency with the given comments layout.
-	//Note that because we define the proxy_object position first, it is given priority over the hip proxy position.
+
+    //We could combine these for loops with the ones for the hip proxy, but I am seperating them for consistency with the given comments layout.
+    //Note that because we define the proxy_object position first, it is given priority over the hip proxy position.
     for (int i = 0; i < 3; ++i) {
         if (proxy_object[i] + sphere_radius > side_length / 2) {
             proxy_object[i] = side_length / 2 - sphere_radius;
@@ -207,7 +216,7 @@ void displayFunction(void)
 
 
     // Consider if HIP sphere enters the big sphere. Find the proxy_pos. Current big sphere position is the global variable sphere_pos, but we compare to proxy_obj in
-	//case we are already offsetting the dynamic sphere's location.
+    //case we are already offsetting the dynamic sphere's location.
     hduVector3Dd rSphereHIP = proxy_object - state.position;
     //If the distance vector has less magnitude than sum of radii, then we have collision.
     const double deltaDist = rSphereHIP.magnitude() - sphere_radius - proxy_radius;
@@ -305,21 +314,21 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     // Local variables for you to use. Add more variables as needed.
     hduVector3Dd f(0, 0, 0); //force on the HIP sphere to be outputted to user
     double timeStep = 0.001; //update rate for numerical integration
-	//Define some force on the sphere for testing.
-	hduVector3Dd sphere_f(0, 0, 0); //net force on the big sphere
+    //Define some force on the sphere for testing.
+    hduVector3Dd sphere_f(0, 0, 0); //net force on the big sphere
 
-	//Track the loop iterations so that we can limit print rate.
-	static int ticker = 0;
-	++ticker;
+    //Track the loop iterations so that we can limit print rate.
+    static int ticker = 0;
+    ++ticker;
 
     //We render haptic feedback to the HIP only depending on the position of the sphere.  If the sphere is on the left half (box is centered at 0, 0), the sphere will be pushed left.
-	//For simplicity, we use the spring constant from the cube walls.
-	if (sphere_pos[0] < 0 && position[0]+proxy_radius > 0){
-		f[0] = -wall_hip_k*(position[0]+proxy_radius);
-	}
-	if (sphere_pos[0] > 0 && position[0]-proxy_radius < 0){
-		f[0] = -wall_hip_k*(position[0]-proxy_radius);
-	}
+    //For simplicity, we use the spring constant from the cube walls.
+    if (sphere_pos[0] < 0 && position[0] + proxy_radius > 0) {
+        f[0] = -wall_hip_k * (position[0] + proxy_radius);
+    }
+    if (sphere_pos[0] > 0 && position[0] - proxy_radius < 0) {
+        f[0] = -wall_hip_k * (position[0] - proxy_radius);
+    }
 
     // Determine the net forces on the big sphere and HIP
     // Compute sphere_f which is the resultant force acting on the big sphere and f which is force on HIP sphere to be outputted to user
@@ -329,24 +338,24 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     //The simulation is contained within a box, surrounding (0, 0, 0) with lengths side_length.
     //We model these walls simple spring system.
 
-	//We want to change the sphere_color once per collision.  Since a collision can last multiple ticks of the callback function, we need to have a toggle bool tracking collisions,
-	//so that the color change only occurs once per collision.
-	static bool inWall = false;
-
     //Check for wall collision.  We use a penetration method for both the hip and dynamic sphere, though in a previous version we used a perfect reflection method
-	//for the dynamic sphere.  Both function approximately the same.
+    //for the dynamic sphere.  Both function approximately the same.
     f = f + Interaction_Wall(position, proxy_radius, wall_hip_k, side_length);
-	sphere_f = sphere_f + Interaction_Wall(sphere_pos, sphere_radius, wall_sphere_k, side_length); 
+    sphere_f = sphere_f + Interaction_Wall(sphere_pos, sphere_radius, wall_sphere_k, side_length);
 
-	//If the force on the sphere from the walls is non zero, then the sphere is inside a wall.
-	if (sphere_f.magnitude() > 0 && !inWall){
-		SphereColorToggle();
-		inWall = true;
-	}
-	//If the sphere is no longer in the wall, we update the inWall variable to false.
-	else if (sphere_f.magnitude() <= 0){
-		inWall = false;
-	}
+    //We want to change the sphere_color once per collision.  Since a collision can last multiple ticks of the callback function, we need to have a toggle bool tracking collisions,
+    //so that the color change only occurs once per collision.
+    static bool sphere_collision = false;
+
+    //If the force on the sphere from the walls is non zero, then the sphere is in a 'collision'.
+    if (sphere_f.magnitude() > 0 && !inWall) {
+        SphereColorToggle();
+        sphere_collision = true;
+    }
+    //If the sphere is no longer in the wall, we update the inWall variable to false.
+    else if (sphere_f.magnitude() <= 0) {
+        sphere_collision = false;
+    }
 
 
 
@@ -367,8 +376,8 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
         sphere_f = sphere_f - collisionForce;
     }
 
-	//std::cout << position[0] << ", " << position[1] << ", " << position[2] << "\n";
-	// example of how you can test your big sphere dynamic by generating a fake known force on it to see its movement. 
+    //std::cout << position[0] << ", " << position[1] << ", " << position[2] << "\n";
+    // example of how you can test your big sphere dynamic by generating a fake known force on it to see its movement. 
     // Note that you still need to define the correct equation of sphere_f above this line for the actual simulation
     //sphere_f.set(0.001,0,0); //force pushing the big sphere along +x direction
 
@@ -390,20 +399,20 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
     //Integrate for position.
     sphere_pos = sphere_pos + sphere_vel * dt;
 
-	/*Print some info for debugging.  Printing every step will slow the simulation, so print every 300ms.
-	if (ticker == 300 && false){
-		ticker = 0;
-		std::cout << "-------\ndynamic sphere:\n";
-		for (int i = 0; i < 3; ++i){
-			std::cout << i << " - f: " << sphere_f[i] << ", a: " << sphere_acc[i] << ", v: " << sphere_vel[i] << ", p: " << sphere_pos[i] << '\n';
-		}
-		std::cout << "||v||: " << sphere_vel.magnitude() << "\n\n";
-		std::cout << "hip sphere:\n";
-		for (int i = 0; i < 3; ++i){
-			std::cout << i << " - f: " << f[i] << ", p: " << position[i] << '\n';
-		}
-	}
-	*/
+    /*Print some info for debugging.  Printing every step will slow the simulation, so print every 300ms.
+    if (ticker == 300 && false){
+        ticker = 0;
+        std::cout << "-------\ndynamic sphere:\n";
+        for (int i = 0; i < 3; ++i){
+            std::cout << i << " - f: " << sphere_f[i] << ", a: " << sphere_acc[i] << ", v: " << sphere_vel[i] << ", p: " << sphere_pos[i] << '\n';
+        }
+        std::cout << "||v||: " << sphere_vel.magnitude() << "\n\n";
+        std::cout << "hip sphere:\n";
+        for (int i = 0; i < 3; ++i){
+            std::cout << i << " - f: " << f[i] << ", p: " << position[i] << '\n';
+        }
+    }
+    */
 
     f.set(0, 0, 0); //keep f to zero to keep the force output to remote device to 0 for safety.
 
@@ -435,7 +444,7 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
  *******************************************************************************/
 void DynamicObjectsRendering()
 {
-	//Get the initial position of the HIP so that we can correctly spawn the box around the HIP, as we don't know the initial 
+    //Get the initial position of the HIP so that we can correctly spawn the box around the HIP, as we don't know the initial 
 
     std::cout << "haptics callback" << std::endl;
     gSchedulerCallback = hdScheduleAsynchronous(
