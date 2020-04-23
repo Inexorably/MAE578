@@ -62,7 +62,7 @@ const float sphere_color[4] = {.2, .8, .8, .8};
 
 // State parameters 
 hduVector3Dd sphere_pos(0,0,0); // center of the object sphere
-hduVector3Dd sphere_vel(0,0,0), sphere_acc(0,0,0); //velocity and acceleration of the big sphere
+hduVector3Dd sphere_vel(-70,-80,-60), sphere_acc(0,0,0); //velocity and acceleration of the big sphere
 
 // Define haptic interaction planes and normal vectors
   hduVector3Dd planeOrigin_left(-side_lengths[0]/2, 0.0, 0.0);
@@ -164,14 +164,6 @@ void displayFunction(void)
   // Update the "proxy_object" variable such that the big sphere does not appear to pass the walls visually.
   // when the big sphere is not touching the walls, proxy_object is the same as sphere_pos
 
-
-
-  
-  // Draw the big sphere using the drawSphere fucntion using the sphere center and parameters defined above
-  GLUquadricObj* pQuadObj = gluNewQuadric();
-  drawSphere(pQuadObj, proxy_object, sphere_color, sphere_radius);
-  gluDeleteQuadric(pQuadObj);
- 
   // Note that the current state of the HIP is saved in the variable called "state" from the method above
   // To get the position of the HIP, use state.position. This represents the center of the HIP sphere
   // For example, to find the distance between the current user position and an object
@@ -220,51 +212,64 @@ void displayFunction(void)
   		////////// HIP wall ////////////
   if (dist_HIP_left < 0.0)
   {
-	  proxy_pos.set(-side_lengths[0]/2 + proxy_radius, state.position[1], state.position[2]);
+	  proxy_pos.set(-side_lengths[0]/2 + proxy_radius, proxy_pos[1], proxy_pos[2]);
   }
-  else if (dist_HIP_right < 0.0)
+  if (dist_HIP_right < 0.0)
   {
-	  proxy_pos.set(side_lengths[0]/2 - proxy_radius, state.position[1], state.position[2]);
+	  proxy_pos.set(side_lengths[0]/2 - proxy_radius, proxy_pos[1], proxy_pos[2]);
   }
-  else if (dist_HIP_bottom < 0.0)
+  if (dist_HIP_bottom < 0.0)
   {
-	  proxy_pos.set(state.position[0], -side_lengths[1]/2 + proxy_radius, state.position[2]);
+	  proxy_pos.set(proxy_pos[0], -side_lengths[1]/2 + proxy_radius, proxy_pos[2]);
   }
-  else if (dist_HIP_top < 0.0)
+  if (dist_HIP_top < 0.0)
   {
-	  proxy_pos.set(state.position[0], side_lengths[1]/2 - proxy_radius, state.position[2]);
+	  proxy_pos.set(proxy_pos[0], side_lengths[1]/2 - proxy_radius, proxy_pos[2]);
   }
-  else if (dist_HIP_back < 0.0)
+  if (dist_HIP_back < 0.0)
   {
-	  proxy_pos.set(state.position[0], state.position[1], -side_lengths[2]/2 + proxy_radius);
+	  proxy_pos.set(proxy_pos[0], proxy_pos[1], -side_lengths[2]/2 + proxy_radius);
+  }
+    //Front wall.
+  if (state.position[2] + proxy_radius > side_lengths[2]/2)
+  {
+	  proxy_pos[2] = side_lengths[2]/2 - proxy_radius;
   }
   
   ////////////// Big Sphere collision with wall  ////////////////////////
   		////////// sphere wall ////////////
+  proxy_object = sphere_pos;
   if (dist_sphere_left < 0.0)
   {
-	  proxy_object.set(-side_lengths[0]/2 + sphere_radius, sphere_pos[1], sphere_pos[2]);
+	  proxy_object.set(-side_lengths[0]/2 + sphere_radius, proxy_object[1], proxy_object[2]);
   }
-  else if (dist_sphere_right < 0.0)
+  if (dist_sphere_right < 0.0)
   {
-	  proxy_object.set(side_lengths[0]/2 - sphere_radius, sphere_pos[1], sphere_pos[2]);
+	  proxy_object.set(side_lengths[0]/2 - sphere_radius, proxy_object[1], proxy_object[2]);
   }
-  else if (dist_sphere_bottom < 0.0)
+  if (dist_sphere_bottom < 0.0)
   {
-	  proxy_object.set(sphere_pos[0], -side_lengths[1]/2 + sphere_radius, sphere_pos[2]);
+	  proxy_object.set(proxy_object[0], -side_lengths[1]/2 + sphere_radius, proxy_object[2]);
   }
-  else if (dist_sphere_top < 0.0)
+  if (dist_sphere_top < 0.0)
   {
-	  proxy_object.set(sphere_pos[0], side_lengths[1]/2 - sphere_radius, sphere_pos[2]);
+	  proxy_object.set(proxy_object[0], side_lengths[1]/2 - sphere_radius, proxy_object[2]);
   }
-  else if (dist_sphere_back < 0.0)
+  //Back wall.  Just work with one component of the vector, don't use .set unless you need to.
+  if (sphere_pos[2] - sphere_radius < -side_lengths[2]/2)
   {
-	  proxy_object.set(sphere_pos[0], sphere_pos[1], - side_lengths[2]/2 + sphere_radius);
+	  proxy_object[2] = -side_lengths[2]/2 + sphere_radius;
   }
-  else
+  //Front wall.
+  if (sphere_pos[2] + sphere_radius > side_lengths[2]/2)
   {
-	  proxy_object = sphere_pos;
+	  proxy_object[2] = side_lengths[2]/2 - sphere_radius;
   }
+
+    // Draw the big sphere using the drawSphere fucntion using the sphere center and parameters defined above
+  GLUquadricObj* pQuadObj = gluNewQuadric();
+  drawSphere(pQuadObj, proxy_object, sphere_color, sphere_radius);
+  gluDeleteQuadric(pQuadObj);
 
   // Consider if HIP sphere enters the big sphere. Find the proxy_pos. Current big sphere position is the global variable sphere_pos. 
   
@@ -505,16 +510,21 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void *data)
   }
 
 		////////// Sphere wall (z-axis) ////////////
-   if (dist_sphere_back < 0.0)
+  if (dist_sphere_back < 0.0)
   {
 	  force_mag_sphere_z = -wall_sphere_k * dist_sphere_back;
 	  force_sphere_z = force_mag_sphere_z * planeNormal_back;
+  }
+  //Walls are 90 deg so only need to check one component.
+  else if (sphere_pos[2] + sphere_radius > side_lengths[2]/2){
+	  force_sphere_z[2] = -wall_sphere_k*(sphere_pos[2]+sphere_radius-side_lengths[2]/2);
   }
   else
   {
 	  force_sphere_z.set(0.0, 0.0, 0.0);
   }
   
+  //You should really avoid doing vectors for each axis.  See email notes.
   f_wall_sphere = force_sphere_x + force_sphere_y + force_sphere_z;
 
   // Rigid sphere forces /////////////////////////////////
@@ -534,24 +544,18 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void *data)
 
   // example of how you can test your big sphere dynamic by generating a fake known force on it to see its movement. 
   // Note that you still need to define the correct equation of sphere_f above this line for the actual simulation
-  sphere_f.set(0,0,-1); //force pushing the big sphere along +x direction
+  //sphere_f.set(0,0,-1); //force pushing the big sphere along +x direction
  
 
   // Knowing sphere_f, compute big sphere dynamics to update its position variable, sphere_pos. This is used in the graphic display function
   // Velocity and acceleration of the sphere (sphere_vel and sphere_acc) are already defined globally
-  // sphere_pos = ??;
-  static hduVector3Dd previous_sphere_vel(0,0,0);
-  static hduVector3Dd previous_sphere_pos(0,0,0);
+  // sphere_pos = ??; 
   
-  
-  hduVector3Dd sphere_acc = (1/sphere_mass)*(-f_sphere-sphere_damping*previous_sphere_vel+f_wall_sphere);
+  hduVector3Dd sphere_acc = (1/sphere_mass)*(-f_sphere-sphere_damping*sphere_vel+f_wall_sphere);
   // hduVector3Dd sphere_acc = (sphere_f/sphere_mass);
-  sphere_vel = sphere_acc*timeStep + previous_sphere_vel;
-  sphere_pos = previous_sphere_vel*timeStep + previous_sphere_pos;
-  
-  previous_sphere_vel = sphere_vel;
-  previous_sphere_pos = sphere_pos;
-  
+  sphere_vel = sphere_acc*timeStep + sphere_vel;
+  sphere_pos = sphere_vel*timeStep + sphere_pos;
+
   f.set(0,0,0); //keep f to zero to keep the force output to remote device to 0 for safety.
   
   // Set the output force on HIP, assuming the force output variable is f. You can change the variable.

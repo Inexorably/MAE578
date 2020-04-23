@@ -62,7 +62,7 @@ const float sphere_color[4] = {.2, .8, .8, .8};
 
 // State parameters 
 hduVector3Dd sphere_pos(0,0,0); // center of the object sphere
-hduVector3Dd sphere_vel(0,0,0), sphere_acc(0,0,0); //velocity and acceleration of the big sphere
+hduVector3Dd sphere_vel(-100, 0,0), sphere_acc(0,0,0); //velocity and acceleration of the big sphere
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -148,9 +148,22 @@ void displayFunction(void)
   
   // Update the "proxy_object" variable such that the big sphere does not appear to pass the walls visually.
   // when the big sphere is not touching the walls, proxy_object is the same as sphere_pos
+  
+  /****************Dynamic sphere - wall proxying*******************/
 
+  //TODO: Use this example on the left and right walls and implement proxying on the four other walls.
 
+  //Check collisions for each axis (can use a for loop with sphere_pos[i] if you want or can have if statement for each).
+  
+  //Checking the left/right wall as an example.
+  if (sphere_pos[0] + sphere_radius > side_length/2){
+	  proxy_object[0] = side_length/2-sphere_radius;
+  }
+  if (sphere_pos[0] - sphere_radius < -side_length/2){
+	  proxy_object[0] = -side_length/2+sphere_radius;
+  }
 
+  /************************************************/
   
   // Draw the big sphere using the drawSphere fucntion using the sphere center and parameters defined above
   GLUquadricObj* pQuadObj = gluNewQuadric();
@@ -170,9 +183,41 @@ void displayFunction(void)
  
   // Consider if HIP sphere enters the walls. Find the proxy_pos
 
+  /*****************HIP sphere - wall proxying********************/
+
+  //TODO: Use this example on the left and right walls and implement proxying on the four other walls.
+
+  //Check collisions for each axis (can use a for loop with sphere_pos[i] if you want or can have if statement for each).
+  
+  //Checking the left/right wall as an example.
+  if (state.position[0] + proxy_radius > side_length/2){
+	  proxy_pos[0] = side_length/2-proxy_radius;
+  }
+  if (state.position[0] - proxy_radius < -side_length/2){
+	  proxy_pos[0] = -side_length/2+proxy_radius;
+  }
+
+  /************************************************/
+
+
   
   // Consider if HIP sphere enters the big sphere. Find the proxy_pos. Current big sphere position is the global variable sphere_pos. 
   
+  /*****************HIP sphere - dynamic sphere proxying********************/
+
+  //TODO: You don't need to change anything here, but should read it to understand for final project.
+  
+  //Both the HIP and dynamic object are spheres, so we can just check the distance the centers.
+  //If the distance is less than the sum of the radii, we are colliding.
+  hduVector3Dd r = proxy_object - proxy_pos;
+  if (r.magnitude() < proxy_radius + sphere_radius){
+	  //If the spheres are colliding, we proxy the HIP sphere as that is what the user is feeling.
+	  //We use r as the direction, so we normalize prior to offsetting the center.
+	  r.normalize();
+	  proxy_pos = proxy_object - r * (sphere_radius + proxy_radius);
+  }
+
+  /************************************************/
 
   
   // Draw HIP sphere using the updated "proxy_pos" variable
@@ -449,9 +494,9 @@ f_wall_sphere=sphere_left+sphere_right+sphere_top+sphere_bottom+sphere_back;
   //std::cout<< position[0] << std::endl; //can uncomment this and use the command to output values on the screen for debugging
  hduVector3Dd ObjF(0,0,0); //Object force
  hduVector3Dd damping_force;
- sphere_f.set(1,0,0);
+// sphere_f.set(1,0,0);
 
- damping_force=sphere_damping*sphere_vel;
+ damping_force=-sphere_damping*sphere_vel;
 	
 	ObjF = -fsphere + f_wall_sphere + damping_force;
 	//ObjF = sphere_f-damping_force;
