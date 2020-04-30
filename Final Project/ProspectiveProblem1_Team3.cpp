@@ -322,16 +322,6 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
 		f[0] += -center_wall_k*position[0];
 	}
 
-    //We render haptic feedback to the HIP only depending on the position of the sphere.  If the sphere is on the left half (box is centered at 0, 0), the sphere will be pushed left.
-	//For simplicity, we use the spring constant from the cube walls.
-	if (sphere_pos[0] < 0 && position[0]+proxy_radius > 0){
-		f[0] += -wall_hip_k*(position[0]+proxy_radius);
-	}
-	if (sphere_pos[0] > 0 && position[0]-proxy_radius < 0){
-		f[0] += -wall_hip_k*(position[0]-proxy_radius);
-	}
-
-
     // Determine the net forces on the big sphere and HIP
     // Compute sphere_f which is the resultant force acting on the big sphere and f which is force on HIP sphere to be outputted to user
     // Remember there are three possible collisions that you need to consider: HIP sphere & walls, HIP sphere & big sphere, big sphere & walls

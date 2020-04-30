@@ -55,7 +55,7 @@ const float box_color[4] = { .2, .2, .8, .2 };
 
 //Middle wall Parameters
 const double center_wall_k = 0.48; //Middle divider wall stiffness with HIP
-const double center_wall_thickness = 10; //Thickness of divider wall
+const double center_wall_thickness = 6; //Thickness of divider wall
 
 
 // Object (big sphere) Parameters.  Note that for remote testing purposes, object may spawn on hip to provide force / have intial velocity / force components.
@@ -71,15 +71,16 @@ const char SPHERE_COLOR_B = 'b';
 char sphere_color_current = SPHERE_COLOR_A;
 
 // Attractive field (static sphere) parameters.
-const double attractive_sphere_k = 3000;
+const double attractive_sphere_k = 30;
 const double attractive_sphere_radius = 10;
 const float attractive_sphere_color[4] = {0.3, 0.3, 0.6, 0.8};
 hduVector3Dd attractive_sphere_pos(50, 0, 0);	//The center of the attractive sphere.
+const double attractive_sphere_spring_radius = 0.3*attractive_sphere_radius; //transition between Gravity and Spring
 
 // State parameters 
 //Note that HIP tool is at 0, -65, -88).
-hduVector3Dd sphere_pos(-40, 20, 0); // center of the object sphere
-hduVector3Dd sphere_vel(80, 30, 0);
+hduVector3Dd sphere_pos(-40, 20, -60); // center of the object sphere
+hduVector3Dd sphere_vel(0, 0, 0);
 hduVector3Dd sphere_acc(0, 0, 0); //velocity and acceleration of the big sphere
 
 //Calculate wall interactions based on radius and position.  Return force vector.  For cube (if want different side lengths take side_lengths as arg).
@@ -354,27 +355,50 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
 	static int ticker = 0;
 	++ticker;
 
-	//Render the forces from the middle wall to the HIP.
+
+
+	//problem set 3 code begin
+
+	//position = attractive_sphere_pos + hduVector3Dd(0,3,0); //test force
+
+	//d is the vector from the gravitational point to the position HIP.
+	hduVector3Dd d = position - attractive_sphere_pos;
+
+	//The distance between position and the attractive_sphere_pos.  Note that pow might not be defined for HDdouble type...
+	hduVector3Dd distanceVector = position - attractive_sphere_pos;
+	HDdouble distance = distanceVector.magnitude();
+	
+    
+	//We split the forces at attractive_sphere_radius into a gravitational case and a spring case.
+	hduVector3Dd dHat = d;
+	dHat.normalize();
+	if (d.magnitude() < attractive_sphere_radius && d.magnitude() > attractive_sphere_spring_radius){
+		f += -1*attractive_sphere_k/pow(d.magnitude(), 2)*dHat;		
+	}
+	
+	if (d.magnitude() <= attractive_sphere_spring_radius){
+		//We set k2 to be equal to attractive_sphere_k/attractive_sphere_radius^3 so that the force feedback is continuous.
+		//If wanted to optimize could make this a const outside of recurring loop so its not repeatedly calced.
+		HDdouble k2 = attractive_sphere_k/pow(attractive_sphere_spring_radius,3);
+		f += -1*k2*d;	//Note that d.magnitude()*d.normalize == d.
+	}
+
+	//problem set 3 code end
+
+
+	//When the user is on the left side of the center wall, the wall should push <- (negative x).
 	if (position[0] < 0 && position[0] > -0.5*center_wall_thickness){
-		f[0] += -center_wall_k*position[0];
+		f[0] += -center_wall_k*(position[0]+0.5*center_wall_thickness);  //This is negative.
 	}
+    //Alternatively, when the user is on the right side of the center wall, the wall should push them out -> (positive x).
 	if (position[0] > 0 && position[0] < 0.5*center_wall_thickness){
-		f[0] += -center_wall_k*position[0];
+		f[0] += -center_wall_k*(position[0]-0.5*center_wall_thickness);  //This is positive.
 	}
 
-	if (sphere_pos[0] > -0.5*center_wall_thickness){
-		sphere_f[0] += -center_wall_k*(sphere_pos[0]+0.5*center_wall_thickness);
+    //Use the wall_sphere stiffness coefficient for such interactions.
+	if (sphere_pos[0]+sphere_radius > -0.5*center_wall_thickness){
+		sphere_f[0] += -wall_sphere_k*(sphere_pos[0]+0.5*center_wall_thickness+sphere_radius);    //This is negative.
 	}
-
-    //We render haptic feedback to the HIP only depending on the position of the sphere.  If the sphere is on the left half (box is centered at 0, 0), the sphere will be pushed left.
-	//For simplicity, we use the spring constant from the cube walls.
-	if (sphere_pos[0] < 0 && position[0]+proxy_radius > 0){
-		f[0] += -wall_hip_k*(position[0]+proxy_radius);
-	}
-	if (sphere_pos[0] > 0 && position[0]-proxy_radius < 0){
-		f[0] += -wall_hip_k*(position[0]-proxy_radius);
-	}
-
 
     // Determine the net forces on the big sphere and HIP
     // Compute sphere_f which is the resultant force acting on the big sphere and f which is force on HIP sphere to be outputted to user
@@ -458,6 +482,7 @@ HDCallbackCode HDCALLBACK DynamicObjectsCallback(void* data)
 	}
 	*/
 
+    //std::cout << "Fx: " << f[0] << ", Fy: " << f[1] << ", Fz: " << f[2] << ", dist: " << distance << ", magnitude: " << static_cast<double>(f.magnitude()) << std::endl;
     f.set(0, 0, 0); //keep f to zero to keep the force output to remote device to 0 for safety.
 
     // Set the output force on HIP, assuming the force output variable is f. You can change the variable.
